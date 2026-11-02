@@ -186,7 +186,12 @@
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Lien externe</label>
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <label class="block text-xs font-bold uppercase text-gray-600">Lien externe</label>
+                        <button type="button" id="aiLinkBtn" onclick="analyzeLinkWithGemini()" class="bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white px-3 py-1 rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Extraire depuis ce lien
+                        </button>
+                    </div>
                     <input type="url" id="recipeLink" placeholder="https://..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
                 </div>
 
@@ -498,6 +503,56 @@
             } finally {
                 loadingEl.classList.add('hidden');
                 btn.disabled = false;
+            }
+        }
+
+
+        // ================= Analyse IA d'un lien web (action explicite) =================
+        async function analyzeLinkWithGemini() {
+            const link = safeUrl(document.getElementById('recipeLink').value);
+            const btn = document.getElementById('aiLinkBtn');
+            if (!link) {
+                toast("Saisissez d'abord un lien externe valide (commençant par http:// ou https://).", 'error');
+                return;
+            }
+            const contentEl = document.getElementById('recipeSourceContent');
+            if (contentEl.value.trim() && !confirm("Le contenu actuel de la recette sera remplacé par celui du lien. Continuer ?")) return;
+
+            const label = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Lecture du lien…';
+
+            try {
+                const response = await fetch(AI_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: link })
+                });
+                let result;
+                try { result = await response.json(); }
+                catch (e) {
+                    throw new Error(response.status === 404
+                        ? "Service d'analyse introuvable (/api/analyze). Le site doit être déployé sur Vercel avec le dossier api/."
+                        : `Réponse invalide du serveur (${response.status}).`);
+                }
+                if (!response.ok) throw new Error(result.error || `Erreur serveur (${response.status}).`);
+
+                // L'auteur et la note ne sont pas repris : le champ « auteur » désigne la personne qui propose la recette.
+                const r = result.recipe || {};
+                if (r.title) document.getElementById('recipeTitle').value = r.title;
+                if (r.sourceContent) contentEl.value = r.sourceContent;
+                if (Array.isArray(r.suggestedTags)) {
+                    document.querySelectorAll('input[name="tags"]').forEach(cb => {
+                        if (r.suggestedTags.includes(cb.value)) cb.checked = true;
+                    });
+                }
+                toast("Recette extraite depuis le lien. Pensez à la relire avant d'enregistrer.", 'success');
+            } catch (error) {
+                console.error("Erreur d'analyse du lien :", error);
+                toast("Extraction impossible : " + error.message, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = label;
             }
         }
 
