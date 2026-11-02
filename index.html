@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>À table ! avec Nyx Hemera et Comlab</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- SDK Firebase Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        .tag-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-right: 0.375rem;
+            margin-bottom: 0.375rem;
+        }
+        .tag-Favori { background-color: #f3e8ff; color: #7e22ce; }
+        .tag-Entrée-chaude { background-color: #dcfce7; color: #15803d; }
+        .tag-Entrée-froide { background-color: #ffedd5; color: #c2410c; }
+        .tag-Accompagnement { background-color: #e0f2fe; color: #0369a1; }
+        .tag-Salade { background-color: #f3e8ff; color: #6b21a8; }
+        .tag-Repas-principal { background-color: #e0e7ff; color: #3730a3; }
+        .tag-Ethnique { background-color: #ccfbf1; color: #0f766e; }
+        .tag-Végé { background-color: #dbeafe; color: #1d4ed8; }
+        .tag-Dessert { background-color: #fef3c7; color: #b45309; }
+        .tag-Boisson { background-color: #cffafe; color: #0e7490; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- En-tête -->
+    <header class="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center gap-3">
+                    <div class="bg-amber-500 text-white p-2.5 sm:p-3 rounded-xl shadow-md">
+                        <i class="fa-solid fa-utensils text-lg sm:text-xl"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h1 class="text-lg sm:text-xl font-bold text-gray-900">À table !</h1>
+                            <span class="text-xs sm:text-sm text-gray-500 font-medium">avec Nyx Hemera et Comlab</span>
+                        </div>
+                        <p class="text-xs text-gray-500 hidden sm:block">Bottin collaboratif et partagé de nos meilleures recettes</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3">
+                <span id="sync-status" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> Connexion...
+                </span>
+                <button onclick="openModal()" class="bg-amber-600 hover:bg-amber-700 text-white font-medium px-4 py-2 rounded-lg text-sm shadow transition flex items-center gap-2 cursor-pointer shrink-0">
+                    <i class="fa-solid fa-plus"></i> <span class="hidden xs:inline">Proposer une recette</span><span class="inline xs:hidden">Ajouter</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Corps principal -->
+    <main class="max-w-7xl mx-auto px-4 py-4 sm:py-6 flex-1 w-full">
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="w-full md:w-1/2 relative">
+                <i class="fa-solid fa-search absolute left-3 top-3.5 text-gray-400"></i>
+                <input type="text" id="searchInput" placeholder="Rechercher par recette ou auteur..." oninput="filterRecipes()" class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500">
+            </div>
+
+            <div class="w-full md:w-1/2 flex items-center justify-end gap-3 flex-wrap">
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <span class="text-xs font-bold text-gray-500 uppercase shrink-0">Filtrer :</span>
+                    <select id="tagSelect" onchange="filterByTag(this.value)" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer">
+                        <option value="all">Tous les types de recettes</option>
+                        <option value="Favori">Favori</option>
+                        <option value="Entrée chaude">Entrée chaude</option>
+                        <option value="Entrée froide">Entrée froide</option>
+                        <option value="Accompagnement">Accompagnement</option>
+                        <option value="Salade">Salade</option>
+                        <option value="Repas principal">Repas principal</option>
+                        <option value="Ethnique">Ethnique</option>
+                        <option value="Végé">Végé</option>
+                        <option value="Dessert">Dessert</option>
+                        <option value="Boisson">Boisson</option>
+                    </select>
+                </div>
+
+                <button id="wordExportBtn" onclick="exportSelectedDocx()" class="hidden bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-2 rounded-lg text-xs font-semibold shadow transition flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-file-word"></i> Exporter Word (<span id="selectedCount">0</span>)
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[750px]">
+                    <thead>
+                        <tr class="bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            <th class="py-3.5 px-4 w-10 text-center">
+                                <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this.checked)" class="rounded text-amber-600 cursor-pointer">
+                            </th>
+                            <th class="py-3.5 px-4">Nom</th>
+                            <th class="py-3.5 px-4">Recette</th>
+                            <th class="py-3.5 px-4">Image</th>
+                            <th class="py-3.5 px-4">Lien</th>
+                            <th class="py-3.5 px-4">Type de recette</th>
+                            <th class="py-3.5 px-4">Évaluation</th>
+                            <th class="py-3.5 px-4 text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recipeTableBody" class="divide-y divide-gray-200 text-sm"></tbody>
+                </table>
+            </div>
+            <div id="emptyState" class="hidden text-center py-12 text-gray-500">
+                <i class="fa-solid fa-book-open text-4xl mb-3 text-gray-300"></i>
+                <p>Aucune recette trouvée. Soyez le premier à en ajouter une !</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Formulaire -->
+    <div id="recipeModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-2 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
+                <h3 id="modalTitle" class="text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <i class="fa-solid fa-utensils text-amber-600"></i> Proposer une recette
+                </h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 p-2 cursor-pointer text-lg rounded-lg hover:bg-gray-100 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="recipeForm" onsubmit="saveRecipe(event)" class="p-6 overflow-y-auto space-y-4 flex-1">
+                <input type="hidden" id="recipeId">
+
+                <div class="bg-amber-50 border border-amber-200 p-3.5 rounded-xl space-y-3">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold uppercase text-amber-900">
+                            <i class="fa-solid fa-paperclip"></i> Documents de référence (PDF, Word, Images)
+                        </label>
+                        <button type="button" id="aiExtractBtn" onclick="analyzeAttachedDocsWithGemini()" class="bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded-lg text-xs font-semibold shadow transition flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Extraire par IA
+                        </button>
+                    </div>
+                    <p class="text-xs text-amber-700">Sélectionnez un ou plusieurs fichiers. Ils seront conservés en pièce jointe et vous pouvez cliquer sur <strong>Extraire par IA</strong> pour pré-remplir le formulaire.</p>
+                    
+                    <input type="file" id="recipeDocFiles" multiple accept=".pdf,.doc,.docx,image/*" onchange="handleDocUpload(event)" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-200 file:text-amber-900 hover:file:bg-amber-300 cursor-pointer bg-white border border-amber-300 rounded-lg">
+                    
+                    <div id="aiLoadingStatus" class="text-xs text-amber-800 font-medium hidden flex items-center gap-2 pt-1">
+                        <i class="fa-solid fa-spinner fa-spin text-amber-600"></i> Analyse et fusion des documents par IA en cours...
+                    </div>
+                    
+                    <div id="currentDocsList" class="space-y-1 pt-1"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Votre Nom / Auteur *</label>
+                    <input type="text" id="authorName" required placeholder="Ex: Nicolas Bouchard-Bellemare" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Titre de la Recette *</label>
+                    <input type="text" id="recipeTitle" required placeholder="Ex: Soupe à l'oignon" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Description / Ingrédients &amp; Étapes *</label>
+                    <textarea id="recipeSourceContent" rows="5" placeholder="Écrivez une courte description ou collez les étapes..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"></textarea>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Photo de couverture (Image)</label>
+                    <input type="file" id="recipeImageFile" accept="image/*" onchange="handleCoverImageUpload(event)" class="w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-100 file:text-amber-800 hover:file:bg-amber-200 cursor-pointer bg-white border border-amber-300 rounded-lg">
+                    <input type="hidden" id="recipeImageBase64">
+                    <div id="coverImagePreview" class="mt-2"></div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Lien externe</label>
+                    <input type="url" id="recipeLink" placeholder="https://..." class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-2">Type de recette (Tags) *</label>
+                    <div class="grid grid-cols-2 gap-2 text-xs">
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Favori" class="rounded text-amber-600"> Favori</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Entrée chaude" class="rounded text-amber-600"> Entrée chaude</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Entrée froide" class="rounded text-amber-600"> Entrée froide</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Accompagnement" class="rounded text-amber-600"> Accompagnement</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Salade" class="rounded text-amber-600"> Salade</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Repas principal" class="rounded text-amber-600"> Repas principal</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Ethnique" class="rounded text-amber-600"> Ethnique</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Végé" class="rounded text-amber-600"> Végé</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Dessert" class="rounded text-amber-600"> Dessert</label>
+                        <label class="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"><input type="checkbox" name="tags" value="Boisson" class="rounded text-amber-600"> Boisson</label>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase text-gray-600 mb-1">Évaluation initiale (0-5)</label>
+                    <select id="recipeRating" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none">
+                        <option value="5">5 Étoiles - Exceptionnel</option>
+                        <option value="4" selected>4 Étoiles - Très bon</option>
+                        <option value="3">3 Étoiles - Correct</option>
+                        <option value="2">2 Étoiles - Moyen</option>
+                        <option value="1">1 Étoile - Décevant</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 cursor-pointer">Annuler</button>
+                    <button type="submit" id="saveBtn" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium shadow cursor-pointer">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Fiche Détaillée -->
+    <div id="detailModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden z-50 flex items-center justify-center p-2 sm:p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[92vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white sticky top-0 z-10 shrink-0">
+                <h3 id="detailTitle" class="text-lg sm:text-xl font-bold text-gray-900 truncate pr-2"></h3>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 p-2 cursor-pointer text-lg rounded-lg hover:bg-gray-100 transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="detailContent" class="p-6 overflow-y-auto space-y-4 text-sm flex-1"></div>
+            <div id="detailFooter" class="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 shrink-0"></div>
+        </div>
+    </div>
+
+    <!-- Script JavaScript -->
+    <script>
+        // ================= Firebase =================
+        const firebaseConfig = {
+            apiKey: "AIzaSyCack_09dtaMAuXuCN2CNhQoSb00wX8P18",
+            authDomain: "recettes-nyx-hemera-comlab.firebaseapp.com",
+            projectId: "recettes-nyx-hemera-comlab",
+            storageBucket: "recettes-nyx-hemera-comlab.firebasestorage.app",
+            messagingSenderId: "692089669884",
+            appId: "1:692089669884:web:f0e9bde4182c08586d6f79"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        // Bascule automatiquement en long polling si la connexion temps réel est bloquée (pare-feu, proxy).
+        db.settings({ experimentalAutoDetectLongPolling: true, merge: true });
+
+        // ================= Constantes =================
+        const MAX_DOC_CHARS = 980000;     // taille max d'un fichier (data URL) : un document Firestore est limité à 1 Mo
+        const MAX_DOCS = 8;               // pièces jointes max par recette
+        const AI_MAX_PAYLOAD = 3900000;   // limite d'envoi à Vercel (≈ 4,5 Mo)
+        const AI_ENDPOINT = '/api/analyze';
+
+        // ================= État =================
+        let recipes = [];
+        let currentFilter = 'all';
+        let selectedRecipeIds = new Set();
+        let attachedDocuments = [];   // { name, type, size, data? , fileId? }
+        let removedFileIds = [];
+        let coverImageBase64 = '';
+
+        // ================= Utilitaires =================
+        function escapeHtml(text) {
+            return String(text == null ? '' : text)
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+        }
+
+        // N'autorise que les liens http(s) pour éviter les liens "javascript:" saisis par erreur ou malveillance.
+        function safeUrl(url) {
+            return /^https?:\/\//i.test(String(url || '').trim()) ? String(url).trim() : '';
+        }
+
+        function toast(message, type = 'info') {
+            let box = document.getElementById('toastBox');
+            if (!box) {
+                box = document.createElement('div');
+                box.id = 'toastBox';
+                box.style.cssText = 'position:fixed;bottom:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;max-width:22rem;';
+                document.body.appendChild(box);
+            }
+            const colors = { success: 'bg-emerald-600', error: 'bg-red-600', info: 'bg-gray-800' };
+            const el = document.createElement('div');
+            el.className = `${colors[type] || colors.info} text-white text-sm px-4 py-3 rounded-lg shadow-lg`;
+            el.textContent = message;
+            box.appendChild(el);
+            setTimeout(() => el.remove(), type === 'error' ? 8000 : 4000);
+        }
+
+        function mimeOf(doc) {
+            if (doc.type) return doc.type;
+            if (doc.data && doc.data.startsWith('data:')) return doc.data.slice(5, doc.data.indexOf(';'));
+            if (/\.pdf$/i.test(doc.name || '')) return 'application/pdf';
+            return 'application/octet-stream';
+        }
+
+        function formatSize(chars) {
+            const kb = Math.round((chars * 0.75) / 1024);
+            return kb >= 1024 ? (kb / 1024).toFixed(1) + ' Mo' : kb + ' Ko';
+        }
+
+        function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Lecture du fichier impossible'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function loadImage(src) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = () => reject(new Error('Image illisible (format non pris en charge ?)'));
+                img.src = src;
+            });
+        }
+
+        // Redimensionne / recompresse une image en JPEG jusqu'à passer sous maxChars.
+        async function resizeDataUrl(src, maxDim, quality, maxChars) {
+            const img = await loadImage(src);
+            let scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+            let q = quality, out = '';
+            for (let i = 0; i < 8; i++) {
+                const w = Math.max(1, Math.round(img.width * scale));
+                const h = Math.max(1, Math.round(img.height * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0, w, h);
+                out = canvas.toDataURL('image/jpeg', q);
+                if (!maxChars || out.length <= maxChars) return out;
+                if (q > 0.5) q -= 0.1; else scale *= 0.8;
+            }
+            return out;
+        }
+
+        // Récupère les données d'une pièce jointe (en mémoire ou dans la collection recipeFiles).
+        async function getDocData(doc) {
+            if (doc.data) return doc.data;
+            if (doc.fileId) {
+                const snap = await db.collection('recipeFiles').doc(doc.fileId).get();
+                if (snap.exists) return snap.data().data;
+            }
+            return null;
+        }
+
+        // ================= Synchronisation temps réel =================
+        function setSyncStatus(ok, text) {
+            const el = document.getElementById('sync-status');
+            if (ok) {
+                el.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200";
+                el.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> ' + escapeHtml(text);
+            } else {
+                el.className = "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 border border-red-200";
+                el.innerHTML = '<span class="w-2 h-2 rounded-full bg-red-500"></span> ' + escapeHtml(text);
+            }
+        }
+
+        db.collection("recipes").onSnapshot((snapshot) => {
+            recipes = snapshot.docs.map((d) => {
+                const data = d.data();
+                let docs = [];
+                try {
+                    if (Array.isArray(data.docsMeta)) {
+                        docs = data.docsMeta;
+                    } else if (data.documentsJson) {          // anciennes fiches : fichiers inclus dans la fiche
+                        docs = JSON.parse(data.documentsJson);
+                    } else if (Array.isArray(data.documents)) {
+                        docs = data.documents;
+                    }
+                } catch (e) { docs = []; }
+                docs = docs.map(x => ({ ...x, type: mimeOf(x) }));
+                return { id: d.id, ...data, documents: docs };
+            });
+            recipes.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+            setSyncStatus(true, 'Synchronisé (Firestore)');
+            renderTable();
+        }, (error) => {
+            console.error("Erreur Firestore :", error);
+            const reasons = {
+                'permission-denied': "Accès refusé (règles Firestore)",
+                'unavailable': "Connexion impossible",
+                'failed-precondition': "Configuration Firestore incomplète"
+            };
+            setSyncStatus(false, reasons[error.code] || "Erreur d'accès");
+        });
+
+        // ================= Analyse IA (via /api/analyze) =================
+        async function analyzeAttachedDocsWithGemini() {
+            const loadingEl = document.getElementById('aiLoadingStatus');
+            const btn = document.getElementById('aiExtractBtn');
+
+            if (!attachedDocuments || attachedDocuments.length === 0) {
+                toast("Ajoutez d'abord au moins un document de référence (photo, PDF, fiche).", 'error');
+                return;
+            }
+
+            loadingEl.classList.remove('hidden');
+            btn.disabled = true;
+
+            try {
+                const files = [];
+                let skipped = 0, total = 0;
+                for (const doc of attachedDocuments) {
+                    const mime = mimeOf(doc);
+                    if (!mime.startsWith('image/') && mime !== 'application/pdf') { skipped++; continue; }
+                    const data = await getDocData(doc);
+                    if (!data) { skipped++; continue; }
+                    const b64 = data.slice(data.indexOf(',') + 1);
+                    total += b64.length;
+                    files.push({ mime_type: mime, data: b64 });
+                }
+                if (files.length === 0) throw new Error("Aucun document analysable : seuls les images et les PDF sont pris en charge (pas les fichiers Word).");
+                if (total > AI_MAX_PAYLOAD) throw new Error("Documents trop volumineux pour une seule analyse. Retirez-en quelques-uns et réessayez.");
+
+                const response = await fetch(AI_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files })
+                });
+
+                let result;
+                try { result = await response.json(); }
+                catch (e) {
+                    throw new Error(response.status === 404
+                        ? "Service d'analyse introuvable (/api/analyze). Le site doit être déployé sur Vercel avec le dossier api/."
+                        : `Réponse invalide du serveur (${response.status}).`);
+                }
+                if (!response.ok) throw new Error(result.error || `Erreur serveur (${response.status}).`);
+
+                const recipeData = result.recipe || {};
+                if (recipeData.title) document.getElementById('recipeTitle').value = recipeData.title;
+                if (recipeData.author && recipeData.author !== 'Inconnu' && !document.getElementById('authorName').value) {
+                    document.getElementById('authorName').value = recipeData.author;
+                }
+                if (recipeData.sourceContent) document.getElementById('recipeSourceContent').value = recipeData.sourceContent;
+                if (recipeData.rating) document.getElementById('recipeRating').value = recipeData.rating;
+
+                if (Array.isArray(recipeData.suggestedTags)) {
+                    document.querySelectorAll('input[name="tags"]').forEach(cb => {
+                        if (recipeData.suggestedTags.includes(cb.value)) cb.checked = true;
+                    });
+                }
+
+                if (!coverImageBase64) {
+                    const firstImg = attachedDocuments.find(d => mimeOf(d).startsWith('image/'));
+                    if (firstImg) {
+                        const data = await getDocData(firstImg);
+                        if (data) setCover(await resizeDataUrl(data, 480, 0.7, 120000));
+                    }
+                }
+
+                toast("Recette extraite et reformatée par l'IA." + (skipped ? ` (${skipped} fichier(s) non analysable(s) ignoré(s))` : ''), 'success');
+            } catch (error) {
+                console.error("Erreur d'analyse :", error);
+                toast("Analyse impossible : " + error.message, 'error');
+            } finally {
+                loadingEl.classList.add('hidden');
+                btn.disabled = false;
+            }
+        }
+
+        // ================= Modales =================
+        function setCover(dataUrl) {
+            coverImageBase64 = dataUrl || '';
+            document.getElementById('recipeImageBase64').value = coverImageBase64;
+            document.getElementById('coverImagePreview').innerHTML = coverImageBase64
+                ? `<img src="${coverImageBase64}" class="h-16 object-cover rounded-lg shadow-sm border border-gray-200">`
+                : '';
+        }
+
+        function openModal(recipeId = null) {
+            document.getElementById('recipeForm').reset();
+            document.getElementById('recipeId').value = '';
+            attachedDocuments = [];
+            removedFileIds = [];
+            setCover('');
+            document.querySelectorAll('input[name="tags"]').forEach(cb => cb.checked = false);
+
+            if (recipeId) {
+                const r = recipes.find(item => item.id === recipeId);
+                if (r) {
+                    document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-600"></i> Modifier la recette';
+                    document.getElementById('recipeId').value = r.id;
+                    document.getElementById('authorName').value = r.author || '';
+                    document.getElementById('recipeTitle').value = r.title || '';
+                    document.getElementById('recipeSourceContent').value = r.sourceContent || '';
+                    document.getElementById('recipeLink').value = r.link || '';
+                    document.getElementById('recipeRating').value = r.rating || 4;
+                    if (r.image) setCover(r.image);
+                    attachedDocuments = (r.documents || []).map(d => ({ ...d }));
+                    if (Array.isArray(r.tags)) {
+                        document.querySelectorAll('input[name="tags"]').forEach(cb => {
+                            if (r.tags.includes(cb.value)) cb.checked = true;
+                        });
+                    }
+                }
+            } else {
+                document.getElementById('modalTitle').innerHTML = '<i class="fa-solid fa-utensils text-amber-600"></i> Proposer une recette';
+            }
+            renderAttachedDocsList();
+            document.getElementById('recipeModal').classList.remove('hidden');
+        }
+
+        function closeModal() { document.getElementById('recipeModal').classList.add('hidden'); }
+        function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+        async function handleCoverImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            try {
+                const src = await readFileAsBase64(file);
+                setCover(await resizeDataUrl(src, 480, 0.7, 120000));
+            } catch (e) {
+                toast("Image de couverture : " + e.message, 'error');
+            }
+        }
+
+        // ================= Pièces jointes =================
+        async function handleDocUpload(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+
+            for (const file of files) {
+                if (attachedDocuments.length >= MAX_DOCS) {
+                    toast(`Maximum ${MAX_DOCS} documents par recette.`, 'error');
+                    break;
+                }
+                try {
+                    let data, type = file.type, name = file.name;
+                    if (file.type.startsWith('image/')) {
+                        // Les photos sont réduites (1600 px max) pour rester sous la limite de Firestore.
+                        data = await resizeDataUrl(await readFileAsBase64(file), 1600, 0.75, MAX_DOC_CHARS);
+                        type = 'image/jpeg';
+                        name = name.replace(/\.[^.]+$/, '') + '.jpg';
+                    } else {
+                        data = await readFileAsBase64(file);
+                    }
+                    if (data.length > MAX_DOC_CHARS) {
+                        toast(`« ${file.name} » est trop volumineux (${Math.round(file.size / 1024)} Ko, max ≈ 700 Ko). Compressez-le ou ajoutez-le sous forme de photos.`, 'error');
+                        continue;
+                    }
+                    attachedDocuments.push({ name, type: type || mimeOf({ data, name }), size: data.length, data });
+                } catch (e) {
+                    toast(`« ${file.name} » : ${e.message}`, 'error');
+                }
+            }
+            renderAttachedDocsList();
+        }
+
+        function removeAttachedDoc(index) {
+            const doc = attachedDocuments[index];
+            if (doc && doc.fileId) removedFileIds.push(doc.fileId);
+            attachedDocuments.splice(index, 1);
+            renderAttachedDocsList();
+        }
+
+        function renderAttachedDocsList() {
+            const container = document.getElementById('currentDocsList');
+            if (attachedDocuments.length === 0) {
+                container.innerHTML = '<span class="text-xs text-gray-500 italic">Aucun document joint pour l\'instant.</span>';
+                return;
+            }
+            container.innerHTML = attachedDocuments.map((doc, idx) => `
+                <div class="flex items-center justify-between bg-white p-2 rounded border border-amber-200 text-xs">
+                    <span class="truncate pr-2"><i class="fa-solid fa-file text-amber-600"></i> ${escapeHtml(doc.name)} <span class="text-gray-400">${doc.size ? '(' + formatSize(doc.size) + ')' : ''}</span></span>
+                    <button type="button" onclick="removeAttachedDoc(${idx})" class="text-red-500 hover:text-red-700 cursor-pointer p-1"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            `).join('');
+        }
+
+        async function downloadDoc(recipeId, idx) {
+            const r = recipes.find(item => item.id === recipeId);
+            const doc = r && r.documents[idx];
+            if (!doc) return;
+            try {
+                const data = await getDocData(doc);
+                if (!data) throw new Error("fichier introuvable");
+                const blob = await (await fetch(data)).blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = doc.name || 'document';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            } catch (e) {
+                toast("Téléchargement impossible : " + e.message, 'error');
+            }
+        }
+
+        // ================= Enregistrement / suppression =================
+        async function saveRecipe(event) {
+            event.preventDefault();
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Enregistrement…';
+
+            try {
+                const id = document.getElementById('recipeId').value;
+                const selectedTags = [];
+                document.querySelectorAll('input[name="tags"]:checked').forEach((cb) => selectedTags.push(cb.value));
+
+                const ref = id ? db.collection("recipes").doc(id) : db.collection("recipes").doc();
+                const batch = db.batch();
+                const now = new Date().toISOString();
+
+                // Chaque nouveau fichier est stocké dans son propre document : la fiche reste légère.
+                const docsMeta = [];
+                for (const doc of attachedDocuments) {
+                    if (doc.fileId) {
+                        docsMeta.push({ fileId: doc.fileId, name: doc.name, type: mimeOf(doc), size: doc.size || 0 });
+                        continue;
+                    }
+                    const data = await getDocData(doc);
+                    if (!data) continue;
+                    if (data.length > MAX_DOC_CHARS) throw new Error(`« ${doc.name} » est trop volumineux pour être enregistré.`);
+                    const fileRef = db.collection("recipeFiles").doc();
+                    batch.set(fileRef, { recipeId: ref.id, name: doc.name, type: mimeOf(doc), data, createdAt: now });
+                    docsMeta.push({ fileId: fileRef.id, name: doc.name, type: mimeOf(doc), size: data.length });
+                }
+                removedFileIds.forEach(fid => batch.delete(db.collection("recipeFiles").doc(fid)));
+
+                const recipeData = {
+                    author: document.getElementById('authorName').value,
+                    title: document.getElementById('recipeTitle').value,
+                    sourceContent: document.getElementById('recipeSourceContent').value,
+                    link: document.getElementById('recipeLink').value,
+                    image: coverImageBase64,
+                    docsMeta,
+                    tags: selectedTags,
+                    rating: parseInt(document.getElementById('recipeRating').value, 10) || 4,
+                    updatedAt: now
+                };
+
+                if (id) {
+                    // Migration des anciennes fiches : on retire les fichiers intégrés à la fiche.
+                    recipeData.documentsJson = firebase.firestore.FieldValue.delete();
+                    recipeData.documents = firebase.firestore.FieldValue.delete();
+                    batch.update(ref, recipeData);
+                } else {
+                    recipeData.createdAt = now;
+                    batch.set(ref, recipeData);
+                }
+
+                await batch.commit();
+                closeModal();
+                toast("Recette enregistrée.", 'success');
+            } catch (e) {
+                console.error(e);
+                toast("Erreur lors de l'enregistrement : " + e.message, 'error');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Enregistrer';
+            }
+        }
+
+        async function deleteRecipe(id) {
+            const r = recipes.find(item => item.id === id);
+            const title = r ? r.title : '';
+            if (!confirm(`Êtes-vous sûr de vouloir supprimer définitivement la recette "${title}" ?`)) return;
+            try {
+                const batch = db.batch();
+                ((r && r.documents) || []).filter(d => d.fileId).forEach(d => batch.delete(db.collection("recipeFiles").doc(d.fileId)));
+                batch.delete(db.collection("recipes").doc(id));
+                await batch.commit();
+                selectedRecipeIds.delete(id);
+                updateExportBtn();
+                closeDetailModal();
+                toast("Recette supprimée.", 'success');
+            } catch (e) {
+                toast("Erreur lors de la suppression : " + e.message, 'error');
+            }
+        }
+
+        // ================= Sélection / filtres =================
+        function toggleSelectRecipe(id, isChecked) {
+            if (isChecked) selectedRecipeIds.add(id);
+            else selectedRecipeIds.delete(id);
+            updateExportBtn();
+        }
+
+        function getFilteredRecipes() {
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+            return recipes.filter(r => {
+                const matchesSearch = (r.title || '').toLowerCase().includes(searchQuery) || (r.author || '').toLowerCase().includes(searchQuery);
+                const matchesTag = currentFilter === 'all' || (r.tags && r.tags.includes(currentFilter));
+                return matchesSearch && matchesTag;
+            });
+        }
+
+        function toggleSelectAll(isChecked) {
+            getFilteredRecipes().forEach(r => {
+                if (isChecked) selectedRecipeIds.add(r.id);
+                else selectedRecipeIds.delete(r.id);
+            });
+            document.querySelectorAll('.recipe-checkbox').forEach(cb => cb.checked = isChecked);
+            updateExportBtn();
+        }
+
+        function updateExportBtn() {
+            const btn = document.getElementById('wordExportBtn');
+            document.getElementById('selectedCount').textContent = selectedRecipeIds.size;
+            if (selectedRecipeIds.size > 0) btn.classList.remove('hidden');
+            else btn.classList.add('hidden');
+        }
+
+        function filterByTag(tag) { currentFilter = tag; renderTable(); }
+        function filterRecipes() { renderTable(); }
+
+        // ================= Affichage =================
+        function renderTable() {
+            const tbody = document.getElementById('recipeTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+            const filtered = getFilteredRecipes();
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            }
+            emptyState.classList.add('hidden');
+
+            filtered.forEach((r) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 transition border-b border-gray-100";
+                const rating = r.rating || 0;
+                const tagsHtml = (r.tags || []).map(t => `<span class="tag-badge tag-${escapeHtml(t.replace(/\s+/g, '-'))}">${escapeHtml(t)}</span>`).join('');
+                const starsHtml = Array.from({ length: 5 }, (_, i) => `<i class="fa-solid fa-star ${i < rating ? 'text-amber-400' : 'text-gray-200'}"></i>`).join('');
+                const isChecked = selectedRecipeIds.has(r.id) ? 'checked' : '';
+                const link = safeUrl(r.link);
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 text-center">
+                        <input type="checkbox" onchange="toggleSelectRecipe('${r.id}', this.checked)" ${isChecked} class="recipe-checkbox rounded text-amber-600 cursor-pointer">
+                    </td>
+                    <td class="py-3 px-4 font-medium"><span class="bg-gray-100 text-gray-700 px-2.5 py-1 rounded-full text-xs">${escapeHtml(r.author)}</span></td>
+                    <td class="py-3 px-4 font-semibold text-gray-900 cursor-pointer hover:text-amber-600" onclick="showDetail('${r.id}')">${escapeHtml(r.title)}</td>
+                    <td class="py-3 px-4">${r.image ? `<img src="${escapeHtml(r.image)}" class="w-10 h-10 object-cover rounded-lg shadow-sm">` : '<span class="text-xs text-gray-400">-</span>'}</td>
+                    <td class="py-3 px-4">${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-amber-600 text-xs font-semibold underline flex items-center gap-1"><i class="fa-solid fa-external-link"></i> Voir</a>` : '<span class="text-xs text-gray-400">-</span>'}</td>
+                    <td class="py-3 px-4">${tagsHtml}</td>
+                    <td class="py-3 px-4"><div class="flex items-center gap-1 text-xs"><span class="font-bold text-gray-700">${rating}</span><div class="flex">${starsHtml}</div></div></td>
+                    <td class="py-3 px-4 text-center space-x-1">
+                        <button onclick="openModal('${r.id}')" class="text-gray-500 hover:text-amber-600 p-2 rounded-lg hover:bg-amber-50 transition cursor-pointer" title="Modifier">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="deleteRecipe('${r.id}')" class="text-gray-400 hover:text-red-600 p-2 rounded-lg hover:bg-red-50 transition cursor-pointer" title="Supprimer">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function showDetail(id) {
+            const r = recipes.find(item => item.id === id);
+            if (!r) return;
+            document.getElementById('detailTitle').textContent = r.title + " (par " + r.author + ")";
+
+            let docsSection = '';
+            if (r.documents && r.documents.length > 0) {
+                docsSection = `
+                    <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 space-y-2">
+                        <span class="text-xs font-bold uppercase text-amber-900"><i class="fa-solid fa-paperclip"></i> Documents de référence joints :</span>
+                        <div class="space-y-1">
+                            ${r.documents.map((doc, idx) => `
+                                <div class="flex items-center justify-between bg-white p-2 rounded border border-amber-200 text-xs">
+                                    <span class="truncate pr-2 font-medium">${escapeHtml(doc.name)}</span>
+                                    <button type="button" onclick="downloadDoc('${r.id}', ${idx})" class="bg-amber-600 hover:bg-amber-700 text-white px-2.5 py-1 rounded-md text-xs font-medium shadow transition flex items-center gap-1 shrink-0 cursor-pointer">
+                                        <i class="fa-solid fa-download"></i> Télécharger
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            const link = safeUrl(r.link);
+            document.getElementById('detailContent').innerHTML = `
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                    ${r.image ? `<div class="flex justify-center mb-3"><img src="${escapeHtml(r.image)}" class="max-h-48 object-cover rounded-xl shadow-md"></div>` : ''}
+                    ${docsSection}
+                    <p class="text-gray-700"><strong>Description / Ingrédients &amp; Étapes :</strong><br><span class="whitespace-pre-line">${escapeHtml(r.sourceContent || 'Aucun détail fourni.')}</span></p>
+                    ${link ? `<div class="mt-2"><a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-amber-600 font-semibold underline text-xs flex items-center gap-1"><i class="fa-solid fa-link"></i> Ouvrir le lien source externe</a></div>` : ''}
+                </div>
+            `;
+            document.getElementById('detailFooter').innerHTML = `
+                <button onclick="exportSingleDocx('${r.id}')" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-file-word"></i> Exporter Word
+                </button>
+                <button onclick="closeDetailModal(); openModal('${r.id}');" class="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-pen-to-square"></i> Modifier
+                </button>
+                <button onclick="deleteRecipe('${r.id}')" class="px-3.5 py-2 bg-gray-200 hover:bg-red-100 hover:text-red-700 text-gray-700 rounded-lg text-xs font-semibold shadow flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-trash"></i> Supprimer
+                </button>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        // ================= Export Word =================
+        function exportSingleDocx(id) {
+            const r = recipes.find(item => item.id === id);
+            if (r) generateDocx([r], `Recette-${(r.title || 'recette').replace(/\s+/g, '_')}.doc`);
+        }
+
+        function exportSelectedDocx() {
+            const selectedList = recipes.filter(r => selectedRecipeIds.has(r.id));
+            if (selectedList.length > 0) generateDocx(selectedList, `Livre_de_Recettes_Nyx_Comlab.doc`);
+        }
+
+        function generateDocx(recipeList, filename) {
+            let htmlContent = `
+                <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+                <head>
+                    <meta charset='utf-8'>
+                    <title>Recettes</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; color: #111827; line-height: 1.5; }
+                        h1 { color: #b45309; text-align: center; font-size: 24px; margin-bottom: 5px; }
+                        .subtitle { text-align: center; color: #6b7280; font-size: 12px; margin-bottom: 30px; }
+                        .recipe-card { border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; margin-bottom: 30px; background-color: #fafafa; }
+                        .recipe-title { color: #1f2937; font-size: 18px; margin-top: 0; margin-bottom: 5px; }
+                        .recipe-meta { font-size: 12px; color: #4b5563; margin-bottom: 15px; }
+                        .recipe-content { background: #ffffff; padding: 15px; border: 1px solid #f3f4f6; border-radius: 6px; white-space: pre-line; font-size: 13px; color: #374151; }
+                        .recipe-link { font-size: 11px; color: #d97706; margin-top: 10px; }
+                    </style>
+                </head>
+                <body>
+                    <h1>À table ! avec Nyx Hemera et Comlab</h1>
+                    <div class="subtitle">Livre de recettes partagées &bull; ${new Date().toLocaleDateString('fr-CA')}</div>
+            `;
+
+            recipeList.forEach(r => {
+                let docsText = '';
+                if (r.documents && r.documents.length > 0) {
+                    docsText = `<div style="font-size: 12px; color: #b45309; margin-bottom: 10px;">Documents joints : ${r.documents.map(d => escapeHtml(d.name)).join(', ')}</div>`;
+                }
+                htmlContent += `
+                    <div class="recipe-card">
+                        <h2 class="recipe-title">${escapeHtml(r.title)}</h2>
+                        <div class="recipe-meta">Proposé par : <strong>${escapeHtml(r.author)}</strong> &bull; Note : ${r.rating || 0}/5 étoiles</div>
+                        ${docsText}
+                        <div class="recipe-content"><strong>Description / Étapes :</strong><br><br>${escapeHtml(r.sourceContent || 'Aucun détail fourni.')}</div>
+                        ${safeUrl(r.link) ? `<div class="recipe-link">Lien source : ${escapeHtml(safeUrl(r.link))}</div>` : ''}
+                    </div>
+                `;
+            });
+
+            htmlContent += `</body></html>`;
+
+            const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+</html>
