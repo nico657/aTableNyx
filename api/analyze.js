@@ -16,11 +16,12 @@ const MAX_FILES = 8;
 const MAX_TOTAL_CHARS = 4200000; // limite Vercel ≈ 4,5 Mo par requête
 
 const PROMPT = `Analyse le ou les document(s) fourni(s) qui composent une recette de cuisine (pages de livre, fiches manuscrites, fiches imprimées, etc.). Regroupe, déduis et reformate toutes les informations pour créer une fiche uniforme, en français, sans rien inventer : conserve les quantités et les temps d'origine.
+Pour chaque ingrédient, écris d'abord la quantité (avec son unité), puis l'ingrédient, par exemple « - 250 g de farine », « - 2 œufs », « - 1 c. à soupe d'huile d'olive ». Si aucune quantité n'est précisée, commence par la mention d'origine, par exemple « - Au goût : poivre ».
 Retourne UNIQUEMENT un objet JSON valide avec la structure exacte suivante :
 {
   "title": "Titre propre de la recette",
   "author": "Auteur si visible, sinon 'Inconnu'",
-  "sourceContent": "INGRÉDIENTS :\\n- [liste des ingrédients avec quantités]\\n\\nPRÉPARATION :\\n1. [étape 1]\\n2. [étape 2]",
+  "sourceContent": "INGRÉDIENTS :\\n- [quantité] [ingrédient]\\n- [quantité] [ingrédient]\\n\\nPRÉPARATION :\\n1. [étape 1]\\n2. [étape 2]",
   "suggestedTags": ["Sélectionne parmi : ${TAGS.join(', ')}"],
   "rating": 4
 }`;
