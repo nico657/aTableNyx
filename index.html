@@ -4,11 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>À table ! avec Nyx Hemera et Comlab</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <!-- Rognage des photos (Cropper.js) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js"></script>
+
     <!-- SDK Firebase Compat -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -43,9 +49,7 @@
         <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
             <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
                 <div class="flex items-center gap-3">
-                    <div class="bg-amber-500 text-white p-2.5 sm:p-3 rounded-xl shadow-md">
-                        <i class="fa-solid fa-utensils text-lg sm:text-xl"></i>
-                    </div>
+                    <img src="logo.png" alt="À table !" class="h-12 w-12 sm:h-14 sm:w-14 object-contain shrink-0">
                     <div>
                         <div class="flex items-center gap-2 flex-wrap">
                             <h1 class="text-lg sm:text-xl font-bold text-gray-900">À table !</h1>
@@ -230,6 +234,34 @@
             </div>
             <div id="detailContent" class="p-6 overflow-y-auto space-y-4 text-sm flex-1"></div>
             <div id="detailFooter" class="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-end gap-2 shrink-0"></div>
+        </div>
+    </div>
+
+
+    <!-- Rognage de la photo de couverture -->
+    <div id="cropModal" class="fixed inset-0 bg-black/70 hidden flex items-center justify-center p-2 sm:p-4" style="z-index:60">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl flex flex-col" style="max-height:95vh">
+            <div class="px-5 py-3 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="font-bold text-gray-900 flex items-center gap-2"><i class="fa-solid fa-crop-simple text-amber-600"></i> Rogner la photo</h3>
+                <button type="button" onclick="closeCropModal()" class="text-gray-400 hover:text-gray-700 cursor-pointer p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="p-3 bg-gray-100 overflow-hidden" style="height:55vh">
+                <img id="cropImage" alt="" style="display:block;max-width:100%">
+            </div>
+            <div class="px-5 py-3 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-1.5 text-xs">
+                    <span class="text-gray-500 mr-1">Format :</span>
+                    <button type="button" onclick="setCropRatio(NaN)" class="px-2.5 py-1 rounded-md border border-gray-300 hover:bg-amber-50 cursor-pointer">Libre</button>
+                    <button type="button" onclick="setCropRatio(1)" class="px-2.5 py-1 rounded-md border border-gray-300 hover:bg-amber-50 cursor-pointer">1:1</button>
+                    <button type="button" onclick="setCropRatio(4/3)" class="px-2.5 py-1 rounded-md border border-gray-300 hover:bg-amber-50 cursor-pointer">4:3</button>
+                    <button type="button" onclick="setCropRatio(16/9)" class="px-2.5 py-1 rounded-md border border-gray-300 hover:bg-amber-50 cursor-pointer">16:9</button>
+                    <button type="button" onclick="rotateCrop()" class="px-2.5 py-1 rounded-md border border-gray-300 hover:bg-amber-50 cursor-pointer" title="Pivoter de 90°"><i class="fa-solid fa-rotate-right"></i></button>
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" onclick="closeCropModal()" class="px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">Annuler</button>
+                    <button type="button" onclick="applyCrop()" class="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium shadow cursor-pointer">Valider</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -455,7 +487,7 @@
                     const firstImg = attachedDocuments.find(d => mimeOf(d).startsWith('image/'));
                     if (firstImg) {
                         const data = await getDocData(firstImg);
-                        if (data) setCover(await resizeDataUrl(data, 480, 0.7, 120000));
+                        if (data) setCover(await resizeDataUrl(data, 600, 0.72, 150000));
                     }
                 }
 
@@ -474,7 +506,10 @@
             coverImageBase64 = dataUrl || '';
             document.getElementById('recipeImageBase64').value = coverImageBase64;
             document.getElementById('coverImagePreview').innerHTML = coverImageBase64
-                ? `<img src="${coverImageBase64}" class="h-16 object-cover rounded-lg shadow-sm border border-gray-200">`
+                ? `<div class="flex items-center gap-3">
+                       <img src="${coverImageBase64}" class="h-16 object-cover rounded-lg shadow-sm border border-gray-200">
+                       <button type="button" onclick="recropCover()" class="text-xs font-semibold text-amber-700 hover:text-amber-900 border border-amber-300 hover:bg-amber-50 px-2.5 py-1.5 rounded-lg cursor-pointer flex items-center gap-1.5"><i class="fa-solid fa-crop-simple"></i> Rogner</button>
+                   </div>`
                 : '';
         }
 
@@ -516,12 +551,52 @@
 
         async function handleCoverImageUpload(event) {
             const file = event.target.files[0];
+            event.target.value = '';
             if (!file) return;
             try {
                 const src = await readFileAsBase64(file);
-                setCover(await resizeDataUrl(src, 480, 0.7, 120000));
+                // Réduction préalable (orientation EXIF appliquée) pour un rognage fluide.
+                openCropper(await resizeDataUrl(src, 1600, 0.9, 0));
             } catch (e) {
                 toast("Image de couverture : " + e.message, 'error');
+            }
+        }
+
+        // ---- Rognage (Cropper.js) ----
+        let cropper = null;
+
+        function openCropper(src) {
+            if (typeof Cropper === 'undefined') {            // bibliothèque non chargée : on garde l'image entière
+                resizeDataUrl(src, 600, 0.72, 150000).then(setCover);
+                toast("Outil de rognage indisponible : photo enregistrée sans rognage.", 'error');
+                return;
+            }
+            const img = document.getElementById('cropImage');
+            if (cropper) { cropper.destroy(); cropper = null; }
+            document.getElementById('cropModal').classList.remove('hidden');
+            img.onload = () => {
+                cropper = new Cropper(img, { viewMode: 1, autoCropArea: 1, background: false, responsive: true, checkOrientation: false });
+            };
+            img.src = src;
+        }
+
+        function recropCover() { if (coverImageBase64) openCropper(coverImageBase64); }
+        function setCropRatio(r) { if (cropper) cropper.setAspectRatio(r); }
+        function rotateCrop() { if (cropper) cropper.rotate(90); }
+
+        function closeCropModal() {
+            if (cropper) { cropper.destroy(); cropper = null; }
+            document.getElementById('cropModal').classList.add('hidden');
+        }
+
+        async function applyCrop() {
+            if (!cropper) return;
+            try {
+                const canvas = cropper.getCroppedCanvas({ maxWidth: 1200, maxHeight: 1200, fillColor: '#ffffff' });
+                setCover(await resizeDataUrl(canvas.toDataURL('image/jpeg', 0.9), 600, 0.72, 150000));
+                closeCropModal();
+            } catch (e) {
+                toast("Rognage impossible : " + e.message, 'error');
             }
         }
 
